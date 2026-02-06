@@ -1,0 +1,23 @@
+reports:
+  base_dir: "results/reports"
+  use_timestamp: false
+  directory_prefix: "pytest"
+  html: # pytest-html
+    enabled: false
+    filename: "report.html"
+    title: "UCM Pytest Test Report"
+
+database:
+  backup: "results/"
+
+# LLM Connection Configuration
+llm_connection:
+  model: "qwen3:0.6b"  # model name
+  server_url: "http://127.0.0.1:11434"
+  tokenizer_path: "D:/Models/Qwen3-32B"
+  llm_type: "vllm"    # vllm/sglang/mindie
+  enable_clear_hbm: true   # HBM clear enable, default true
+  stream: true    # stream output, default true
+  ignore_eos: true    # Ignore the returned terminator, default true
+  timeout: 36000    # request time out, default 180
+  extra_info: "vllm_qwen3-32b_pc-gsa"  # extra info, Used to mark different service pull-up parameters
