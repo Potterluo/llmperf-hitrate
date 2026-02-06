@@ -59,6 +59,15 @@ pytest suites/E2E/test_uc_performance.py -v
 pytest
 ```
 
+## 容器化执行
+根据系统架构下载对应的镜像tar包: `llmperf-x86_64.tar`, `llmperf-arm64.tar`。
+```bash
+docker load -i llmperf-x86_64.tar
+# 修改完所需test case以及yaml
+docker run --rm -it -v /mnt/d/Project/llmperf:/workspace -w /workspace llmperf:x86_64 pytest
+# /mnt/d/Project/llmperf 为宿主机llmperf路径
+```
+
 ## 结果指标
 
 ### 延迟 (s)
@@ -87,3 +96,5 @@ pytest
 database:
   backup: "results/"
 ```
+
+
