@@ -265,8 +265,8 @@ database:
 示例：
 
 ```
-results/20250212_perf.csv
-results/20250212_perf.jsonl
+results/llmperf.csv
+results/llmperf.jsonl
 ```
 
 ------
@@ -288,7 +288,7 @@ results/20250212_perf.jsonl
 
 ------
 
-## MindIE（重点）
+## MindIE
 
 MindIE 的纯盘命中需要特殊流程，否则测试结果不真实。
 
