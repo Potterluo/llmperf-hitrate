@@ -48,7 +48,7 @@ perf_scenarios = [(100, 10, 1, 1, 0, 50)]
 ```
 
 ## 快速开始
-
+若存在 python 3.11+ 以及有网络的环境，可直接安装依赖并执行。
 ```bash
 pip install -r requirements.txt
 
@@ -60,12 +60,21 @@ pytest
 ```
 
 ## 容器化执行
-根据系统架构下载对应的镜像tar包: `llmperf-x86_64.tar`, `llmperf-arm64.tar`。
+若python版本过低或没有现场下载依赖的条件，可根据系统架构下载对应的镜像tar包[https://github.com/Potterluo/llmperf-hitrate/releases/tag/0.0.1-release](https://github.com/Potterluo/llmperf-hitrate/releases/tag/0.0.1-release): `llmperf-x86_64.tar`, `llmperf-arm64.tar`。
 ```bash
 docker load -i llmperf-x86_64.tar
 # 修改完所需test case以及yaml
-docker run --rm -it -v /mnt/d/Project/llmperf:/workspace -w /workspace llmperf:x86_64 pytest
-# /mnt/d/Project/llmperf 为宿主机llmperf路径
+docker run --rm -it -v /mnt/model:/mnt/model-v /mnt/d/Project/llmperf:/workspace -w /workspace llmperf:x86_64 pytest
+# /mnt/model为模型存放路径，/mnt/d/Project/llmperf 为宿主机llmperf代码存放路径（此目录存在 conftest.py 入口文件）
+
+若需后台运行
+docker run -d --name=perf-test -v /mnt/model:/mnt/model-v /mnt/d/Project/llmperf:/workspace -w /workspace llmperf:x86_64 pytest
+# 日志查看
+docker logs -f perf-test
+# 运行结束后日志保存
+docker logs  perf-test > output.log
+# 运行结束后删除容器
+docker rm -f perf-test
 ```
 
 ## 结果指标
