@@ -2,7 +2,6 @@ from __future__ import annotations
 import datetime as dt
 import platform as pf
 import sys
-from pathlib import Path
 import pytest
 from common.config_utils import config_utils as config_instance
 from common.db_utils import database_connection, write_to_db, jsonl_to_csv
@@ -129,15 +128,6 @@ def pytest_sessionstart(session):
     print("-" * 60)
 
 
-def pytest_sessionfinish(session, exitstatus):
-    report_dir = getattr(session.config, "_report_dir", "reports")
-    print("")
-    print("-" * 60)
-    print(f"{'Reports at':<10} │ {report_dir}")
-    print("Test session ended")
-    print("-" * 60)
-
-
 # ---------------- Fixtures ----------------
 def pytest_runtest_logreport(report):
     """
@@ -155,13 +145,20 @@ def pytest_runtest_logreport(report):
     }
     write_to_db("test_case_info", test_result)
 
+
 # ---------------- Session Finish Hook ----------------
-
-
 def pytest_sessionfinish(session, exitstatus):
     """
-    pytest hook: 在所有测试执行结束后自动将 JSONL 转换为 CSV
+    pytest hook: runs after all tests finish.
+    Prints the report directory and converts every JSONL result file to CSV.
     """
+    report_dir = getattr(session.config, "_report_dir", "reports")
+    print("")
+    print("-" * 60)
+    print(f"{'Reports at':<10} │ {report_dir}")
+    print("Test session ended")
+    print("-" * 60)
+
     backup_dir = config_instance.get_nested_config("database.backup") or "results/"
     backup_dir = Path(backup_dir).resolve()
 
@@ -176,7 +173,7 @@ def pytest_sessionfinish(session, exitstatus):
         return
 
     logging.info(f"Starting JSONL to CSV conversion for {len(jsonl_files)} files in {backup_dir}")
-    
+
     success_count = 0
     for jsonl_file in jsonl_files:
         try:

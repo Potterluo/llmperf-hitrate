@@ -84,12 +84,16 @@ def test_performance(in_tokens, out_tokens, max_req, concurrent, random_seed, hi
             "hit_rate": float('nan'),
             "ttft_mean": float('nan'),
             "tpot_mean": float('nan'),
+            "tbt_mean": float('nan'),
             "total_throughput": float('nan'),
             "e2e_mean": float('nan'),
             "extra_info": os.getenv("TEST_EXTRA_INFO")
             or config_instance.get_nested_config("llm_connection.extra_info"),
             "model": config_instance.get_nested_config("llm_connection.model"),
             "server_url": config_instance.get_nested_config("llm_connection.server_url"),
+            "tpot_p50": float('nan'),
+            "tpot_p90": float('nan'),
+            "tpot_p99": float('nan'),
             "tbt_p50": float('nan'),
             "tbt_p90": float('nan'),
             "tbt_p99": float('nan'),
@@ -113,34 +117,40 @@ def test_performance(in_tokens, out_tokens, max_req, concurrent, random_seed, hi
             "concurrent": concurrent,
             "sum_requests": max_req,
             "hit_rate": hit_rate,
-            
+
             # 延迟指标（带空值保护）
             "ttft_mean": results.get("ttft_s", {}).get("mean") if results.get("ttft_s") else float('nan'),
-            "tpot_mean": results.get("inter_token_latency_s", {}).get("mean") if results.get("inter_token_latency_s") else float('nan'),
+            "tpot_mean": results.get("tpot_s", {}).get("mean") if results.get("tpot_s") else float('nan'),
+            "tbt_mean": results.get("inter_token_latency_s", {}).get("mean") if results.get("inter_token_latency_s") else float('nan'),
             "total_throughput": summary.get("total_throughput") if summary.get("total_throughput") is not None else float('nan'),
             "e2e_mean": results.get("end_to_end_latency_s", {}).get("mean") if results.get("end_to_end_latency_s") else float('nan'),
-            
+
             # 模型及环境信息
             "extra_info": os.getenv("TEST_EXTRA_INFO")
             or config_instance.get_nested_config("llm_connection.extra_info"),
             "model": config_instance.get_nested_config("llm_connection.model"),
             "server_url": config_instance.get_nested_config("llm_connection.server_url"),
-            
+
             # TPOT 分位数
+            "tpot_p50": (results.get("tpot_s", {}).get("quantiles") or {}).get("p50") if results.get("tpot_s") else float('nan'),
+            "tpot_p90": (results.get("tpot_s", {}).get("quantiles") or {}).get("p90") if results.get("tpot_s") else float('nan'),
+            "tpot_p99": (results.get("tpot_s", {}).get("quantiles") or {}).get("p99") if results.get("tpot_s") else float('nan'),
+
+            # TBT 分位数
             "tbt_p50": (results.get("inter_token_latency_s", {}).get("quantiles") or {}).get("p50") if results.get("inter_token_latency_s") else float('nan'),
             "tbt_p90": (results.get("inter_token_latency_s", {}).get("quantiles") or {}).get("p90") if results.get("inter_token_latency_s") else float('nan'),
             "tbt_p99": (results.get("inter_token_latency_s", {}).get("quantiles") or {}).get("p99") if results.get("inter_token_latency_s") else float('nan'),
-            
+
             # TTFT 分位数
             "ttft_p50": (results.get("ttft_s", {}).get("quantiles") or {}).get("p50") if results.get("ttft_s") else float('nan'),
             "ttft_p90": (results.get("ttft_s", {}).get("quantiles") or {}).get("p90") if results.get("ttft_s") else float('nan'),
             "ttft_p99": (results.get("ttft_s", {}).get("quantiles") or {}).get("p99") if results.get("ttft_s") else float('nan'),
-            
+
             # E2E 分位数
             "e2e_p50": (results.get("end_to_end_latency_s", {}).get("quantiles") or {}).get("p50") if results.get("end_to_end_latency_s") else float('nan'),
             "e2e_p90": (results.get("end_to_end_latency_s", {}).get("quantiles") or {}).get("p90") if results.get("end_to_end_latency_s") else float('nan'),
             "e2e_p99": (results.get("end_to_end_latency_s", {}).get("quantiles") or {}).get("p99") if results.get("end_to_end_latency_s") else float('nan'),
-            
+
             # 吞吐统计
             "num_completed_requests": summary.get("num_completed_requests") if summary.get("num_completed_requests") is not None else float('nan'),
             "elapsed_time": summary.get("elapsed_time") if summary.get("elapsed_time") is not None else float('nan'),

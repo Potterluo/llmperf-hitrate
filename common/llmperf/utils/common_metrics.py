@@ -1,5 +1,6 @@
 # TODO (Avnishn): compute metrics in class
-INTER_TOKEN_LAT = "inter_token_latency_s"
+INTER_TOKEN_LAT = "inter_token_latency_s"  # Time Between Tokens (TBT)
+TPOT = "tpot_s"  # Time Per Output Token = (E2E - TTFT) / (output_tokens - 1)
 TTFT = "ttft_s"
 E2E_LAT = "end_to_end_latency_s"
 NUM_INPUT_TOKENS = "number_input_tokens"

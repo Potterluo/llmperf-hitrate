@@ -2,13 +2,12 @@ import hashlib
 import json
 import logging
 import math
-import os
 import pathlib
 import random
-import subprocess
 import time
 from typing import Any, Dict, Tuple
 
+import requests
 from common.config_utils import config_utils
 from transformers import LlamaTokenizerFast
 
@@ -173,12 +172,13 @@ def flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = "_") -> Dic
 
 def reset_prefill_cache(env: Dict[str, str], server_url: str, llm_type: str) -> None:
     """重置模型前缀缓存/HBM
-    
-    通过HTTP端点清除vLLM或SGLang的KV缓存
-    
+
+    通过 HTTP 端点清除 vLLM 或 SGLang 的 KV 缓存。
+    使用 requests 而非 curl，确保在精简镜像（无 curl）中也可运行。
+
     Args:
-        env: 环境变量字典
-        server_url: 服务URL
+        env: 环境变量字典（保留以兼容调用方，内部不再使用）
+        server_url: 服务 URL
         llm_type: 模型类型 (vllm/sglang)
     """
     if not get_clear_hbm_config():
@@ -190,39 +190,34 @@ def reset_prefill_cache(env: Dict[str, str], server_url: str, llm_type: str) -> 
         "vllm": "/reset_prefix_cache",
         "sglang": "/flush_cache",
     }
-    
+
     if llm_type not in endpoint_map:
-        raise ValueError(f"Unsupported llm_type: {llm_type}. Supported: {list(endpoint_map.keys())}")
-    
+        raise ValueError(
+            f"Unsupported llm_type: {llm_type}. Supported: {list(endpoint_map.keys())}"
+        )
+
     reset_url = f"{server_url}{endpoint_map[llm_type]}"
     logger.info(f"Resetting prefix cache: {reset_url}")
 
     try:
-        result = subprocess.run(
-            ["curl", "-X", "POST", reset_url, "-s", "-f"],
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-        
-        if result.returncode == 0:
+        # Bypass any proxy env vars so the reset hits the backend directly.
+        resp = requests.post(reset_url, timeout=10, proxies={"http": None, "https": None})
+        if resp.status_code < 400:
             logger.info("Prefix cache successfully reset")
         else:
-            stderr = result.stderr.strip() if result.stderr else "No error message"
             logger.warning(
-                f"Failed to reset prefix cache. "
-                f"Exit code: {result.returncode}, "
-                f"URL: {reset_url}, "
-                f"Error: {stderr}"
+                "Failed to reset prefix cache. "
+                "Status: %s, URL: %s, Body: %s",
+                resp.status_code,
+                reset_url,
+                resp.text[:200],
             )
-            
-    except subprocess.TimeoutExpired:
+
+    except requests.Timeout:
         logger.warning(f"Timeout while resetting prefix cache (10s): {reset_url}")
-    except FileNotFoundError:
-        logger.warning("curl command not found in PATH")
-    except subprocess.SubprocessError as e:
-        logger.warning(f"Subprocess error during cache reset: {e}")
+    except requests.ConnectionError as e:
+        logger.warning(f"Connection error during cache reset: {e}")
+    except requests.RequestException as e:
+        logger.warning(f"Request error during cache reset: {e}")
     except Exception as e:
         logger.warning(f"Unexpected error during cache reset: {e}", exc_info=True)

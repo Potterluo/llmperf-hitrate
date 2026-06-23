@@ -5,6 +5,7 @@ from pathlib import Path
 import secrets
 from time import time
 from common.config_utils import config_utils
+from common.llmperf.utils.openai_chat_completions_client import check_service_health
 from common.llmperf.utils.token_benchmark import run_token_benchmark
 from common.llmperf.utils.utils import reset_prefill_cache
 
@@ -226,8 +227,8 @@ def inference_results(
     llm_api = config_utils.get_nested_config("llm_connection.server_url", "")
     model = config_utils.get_nested_config("llm_connection.model", "")
     test_timeout_s = config_utils.get_nested_config(
-        "llm_connection.test_timeout_s", 60000
-    )
+        "llm_connection.test_timeout_s", None
+    ) or config_utils.get_nested_config("llm_connection.timeout", 180)
     stddev_input_tokens = config_utils.get_nested_config(
         "llm_connection.stddev_input_tokens", 0
     )
@@ -241,9 +242,7 @@ def inference_results(
     llm_config = {
         "server_url": config_utils.get_nested_config("llm_connection.server_url", ""),
         "model": config_utils.get_nested_config("llm_connection.model", ""),
-        "test_timeout_s": config_utils.get_nested_config(
-            "llm_connection.test_timeout_s", 60000
-        ),
+        "test_timeout_s": test_timeout_s,
         "stddev_input_tokens": config_utils.get_nested_config(
             "llm_connection.stddev_input_tokens", 0
         ),
@@ -276,6 +275,19 @@ def inference_results(
     logger.info("Initialization complete, starting main process")
     logger.debug(f"Reading configuration file: {config_file}")
     logger.debug(f"Created results directory: {timestamp_dir}")
+
+    # Pre-flight check: make sure the service answers before spending time on
+    # the benchmark. Abort early (returning an empty summary) if it does not.
+    logger.info(f"Pre-flight service health check → {server_url}")
+    ok, health_msg = check_service_health(server_url, model, timeout=min(test_timeout_s, 30))
+    if not ok:
+        logger.error(f"Service health check FAILED: {health_msg}")
+        logger.error(
+            "Aborting benchmark. Please verify llm_connection.server_url / model "
+            "in config.yaml and that the inference service is running."
+        )
+        return {}
+    logger.info(f"Service health check passed: {health_msg}")
 
     summary, failed_cases = run_test_cases(
         llm_api,

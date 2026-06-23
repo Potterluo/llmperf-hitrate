@@ -12,12 +12,19 @@ database:
 
 # LLM Connection Configuration
 llm_connection:
-  model: "qwen3:0.6b"  # model name
-  server_url: "http://127.0.0.1:11434"
-  tokenizer_path: "D:/Models/Qwen3-32B"
-  llm_type: "vllm"    # vllm/sglang/mindie
-  enable_clear_hbm: true   # HBM clear enable, default true
-  stream: true    # stream output, default true
-  ignore_eos: true    # Ignore the returned terminator, default true
-  timeout: 36000    # request time out, default 180
-  extra_info: "vllm_qwen3-32b_pc-gsa"  # extra info, Used to mark different service pull-up parameters
+  model: "qwen3:0.6b"  # 模型名，需与服务端一致
+  server_url: "http://127.0.0.1:11434"  # 推理服务地址（OpenAI 兼容，无需带 /v1）
+  tokenizer_path: "D:/Models/Qwen3-32B"  # 本地 tokenizer 路径，用于精确统计 token 数
+  llm_type: "vllm"    # 引擎类型: vllm / sglang / mindie
+  enable_clear_hbm: true   # 是否在每轮请求前重置 prefix cache / KV cache
+  stream: true    # 是否流式输出
+  ignore_eos: true    # 是否忽略结束符（压测时通常为 true，保证固定输出长度）
+  timeout: 180    # 单请求超时（秒），默认 180
+  verbose: false   # 详细日志：保存每次请求/响应原文到 results/verbose/
+  extra_info: "vllm_qwen3-32b_pc-gsa"  # 标记信息，用于区分不同服务拉起参数
+
+llmperf:
+  extra_info:
+
+uc_eval:
+  extra_info:

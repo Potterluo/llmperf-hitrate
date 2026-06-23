@@ -132,6 +132,14 @@ def get_token_throughput_latencies(
                 except Exception as e:
                     logging.warning(f"[WARN] Future raised exception: {e}")
                     continue
+
+                # Skip requests that did not complete cleanly: their metrics
+                # are zeroed and carry a non-None error_code, so they would
+                # only drag down the aggregates (and risk divide-by-zero).
+                if metrics.get(common_metrics.ERROR_CODE) is not None:
+                    completed_requests.append(metrics)
+                    continue
+
                 num_output_tokens = get_token_length(gen_text)
                 if num_output_tokens:
                     metrics[common_metrics.INTER_TOKEN_LAT] /= (
@@ -143,12 +151,19 @@ def get_token_throughput_latencies(
                     metrics[common_metrics.NUM_TOTAL_TOKENS] = (
                         metrics[common_metrics.NUM_INPUT_TOKENS] + num_output_tokens
                     )
-                    try:
-                        metrics[common_metrics.REQ_OUTPUT_THROUGHPUT] = (
-                            num_output_tokens / metrics[common_metrics.E2E_LAT]
-                        )
-                    except ZeroDivisionError:
-                        logging.error("Division by zero in throughput calculation.")
+                    # Recompute TPOT with the real (tokenizer-counted) output
+                    # token number: (E2E - TTFT) / (output_tokens - 1).
+                    decode_time = max(
+                        metrics[common_metrics.E2E_LAT] - metrics[common_metrics.TTFT],
+                        0.0,
+                    )
+                    metrics[common_metrics.TPOT] = decode_time / max(
+                        num_output_tokens - 1, 1
+                    )
+                    e2e = metrics[common_metrics.E2E_LAT]
+                    metrics[common_metrics.REQ_OUTPUT_THROUGHPUT] = (
+                        num_output_tokens / e2e if e2e > 0 else 0.0
+                    )
 
                 completed_requests.append(metrics)
 
@@ -249,6 +264,7 @@ def metrics_summary(
 
     for key in [
         common_metrics.INTER_TOKEN_LAT,
+        common_metrics.TPOT,
         common_metrics.TTFT,
         common_metrics.E2E_LAT,
         common_metrics.REQ_OUTPUT_THROUGHPUT,
@@ -290,16 +306,19 @@ def metrics_summary(
         print(error_code_frequency)
     ret[common_metrics.ERROR_CODE_FREQ] = str(error_code_frequency)
 
-    overall_output_throughput = df_without_errored_req[
-        common_metrics.NUM_OUTPUT_TOKENS
-    ].sum() / (end_time - start_time)
+    elapsed = end_time - start_time
+    overall_output_throughput = (
+        df_without_errored_req[common_metrics.NUM_OUTPUT_TOKENS].sum() / elapsed
+        if elapsed > 0
+        else 0.0
+    )
 
     print(f"Overall Output Throughput: {overall_output_throughput}")
     ret[common_metrics.OUTPUT_THROUGHPUT] = overall_output_throughput
 
     num_completed_requests = len(df_without_errored_req)
     num_completed_requests_per_min = (
-        num_completed_requests / (end_time - start_time) * 60
+        num_completed_requests / elapsed * 60 if elapsed > 0 else 0.0
     )
     print(f"Number Of Completed Requests: {num_completed_requests}")
     print(f"Completed Requests Per Minute: {num_completed_requests_per_min}")
