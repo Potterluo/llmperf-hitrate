@@ -12,4 +12,5 @@ $null
 .*
 *.log
 start.bat
-!.gitignorerelease-images/
+!.gitignore
+release-images/
